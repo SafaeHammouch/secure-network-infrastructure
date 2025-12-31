@@ -2,93 +2,76 @@
 
 from mininet.net import Mininet
 from mininet.node import Node, OVSSwitch
-from mininet.link import TCLink
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
-import time
 
+# On définit une classe pour le routeur
 class LinuxRouter(Node):
-    """Un noeud qui agit comme un routeur Linux (IP Forwarding activé)"""
     def config(self, **params):
-        super().config(**params)
-        # Activation du forwarding IPv4
+        super(LinuxRouter, self).config(**params)
+        # Activer le routage IP
         self.cmd('sysctl -w net.ipv4.ip_forward=1')
 
     def terminate(self):
         self.cmd('sysctl -w net.ipv4.ip_forward=0')
-        super().terminate()
+        super(LinuxRouter, self).terminate()
 
-def create_topology():
-    # On retire le controleur pour laisser les switchs en mode standalone
-    net = Mininet(controller=None, link=TCLink, switch=OVSSwitch)
+def setup_network():
+    # On met controller=None pour éviter l'erreur que vous avez eue
+    net = Mininet(topo=None, build=False, controller=None)
 
-    info("[*] Ajout des commutateurs (Zones)\n")
-    s_wan   = net.addSwitch('s1')
-    s_dmz   = net.addSwitch('s2')
-    s_lan   = net.addSwitch('s3')
-    s_vpn   = net.addSwitch('s4')
-    s_admin = net.addSwitch('s5')
-
-    info("[*] Ajout du Pare-feu central (Router)\n")
-    # On ne donne pas d'IP globale ici, on configurera les interfaces apres
-    fw = net.addHost('fw', cls=LinuxRouter, ip=None)
-
-    info("[*] Ajout des Hotes\n")
-    wan = net.addHost('wan', ip='10.0.0.2/24', defaultRoute='via 10.0.0.1')
-    dmz = net.addHost('dmz', ip='10.0.1.2/24', defaultRoute='via 10.0.1.1')
-    lan = net.addHost('lan', ip='10.0.2.2/24', defaultRoute='via 10.0.2.1')
-    vpn = net.addHost('vpn', ip='10.0.3.2/24', defaultRoute='via 10.0.3.1')
-    adm = net.addHost('admin', ip='10.0.4.2/24', defaultRoute='via 10.0.4.1')
-
-    info("[*] Creation des liens et adressage des interfaces du FW\n")
+    info('*** Création des nœuds (Routeur et Hôtes)\n')
+    # Routeur R1
+    r1 = net.addHost('r1', cls=LinuxRouter, ip='10.0.1.1/24')
     
-    # Zone WAN (10.0.0.0/24)
-    net.addLink(wan, s_wan)
-    net.addLink(fw, s_wan, intfName2='fw-wan', params2={'ip': '10.0.0.1/24'})
+    # Hôtes
+    h_wan = net.addHost('h_wan', ip='10.0.1.10/24', defaultRoute='via 10.0.1.1')
+    h_web = net.addHost('h_web', ip='10.0.2.10/24', defaultRoute='via 10.0.2.1')
+    h_lan = net.addHost('h_lan', ip='10.0.3.10/24', defaultRoute='via 10.0.3.1')
+    h_admin = net.addHost('h_admin', ip='10.0.4.10/24', defaultRoute='via 10.0.4.1')
 
-    # Zone DMZ (10.0.1.0/24)
-    net.addLink(dmz, s_dmz)
-    net.addLink(fw, s_dmz, intfName2='fw-dmz', params2={'ip': '10.0.1.1/24'})
+    info('*** Création des switches en mode standalone\n')
+    # failMode='standalone' permet au switch de fonctionner comme un switch normal sans contrôleur
+    s1 = net.addSwitch('s1', cls=OVSSwitch, failMode='standalone')
+    s2 = net.addSwitch('s2', cls=OVSSwitch, failMode='standalone')
+    s3 = net.addSwitch('s3', cls=OVSSwitch, failMode='standalone')
+    s4 = net.addSwitch('s4', cls=OVSSwitch, failMode='standalone')
 
-    # Zone LAN (10.0.2.0/24)
-    net.addLink(lan, s_lan)
-    net.addLink(fw, s_lan, intfName2='fw-lan', params2={'ip': '10.0.2.1/24'})
+    info('*** Création des liens\n')
+    # R1 connecté aux 4 switches
+    net.addLink(r1, s1, intfName1='r1-eth0') # WAN
+    net.addLink(r1, s2, intfName1='r1-eth1') # DMZ
+    net.addLink(r1, s3, intfName1='r1-eth2') # LAN
+    net.addLink(r1, s4, intfName1='r1-eth3') # ADMIN
 
-    # Zone VPN (10.0.3.0/24)
-    net.addLink(vpn, s_vpn)
-    net.addLink(fw, s_vpn, intfName2='fw-vpn', params2={'ip': '10.0.3.1/24'})
+    # Hôtes connectés à leurs zones respectives
+    net.addLink(h_wan, s1)
+    net.addLink(h_web, s2)
+    net.addLink(h_lan, s3)
+    net.addLink(h_admin, s4)
 
-    # Zone ADMIN (10.0.4.0/24)
-    net.addLink(adm, s_admin)
-    net.addLink(fw, s_admin, intfName2='fw-admin', params2={'ip': '10.0.4.1/24'})
-
-    info("[*] Demarrage du reseau\n")
+    info('*** Démarrage du réseau\n')
+    net.build()
     net.start()
+
+    info('*** Configuration des IPs additionnelles sur R1\n')
+    r1.cmd('ip addr add 10.0.2.1/24 dev r1-eth1')
+    r1.cmd('ip addr add 10.0.3.1/24 dev r1-eth2')
+    r1.cmd('ip addr add 10.0.4.1/24 dev r1-eth3')
     
-    # Configuration manuelle de sécurité pour forcer les IPs (parfois capricieux avec params2)
-    fw.cmd('ifconfig fw-wan 10.0.0.1 netmask 255.255.255.0 up')
-    fw.cmd('ifconfig fw-dmz 10.0.1.1 netmask 255.255.255.0 up')
-    fw.cmd('ifconfig fw-lan 10.0.2.1 netmask 255.255.255.0 up')
-    fw.cmd('ifconfig fw-vpn 10.0.3.1 netmask 255.255.255.0 up')
-    fw.cmd('ifconfig fw-admin 10.0.4.1 netmask 255.255.255.0 up')
+    # On s'assure que toutes les interfaces sont activées
+    for i in range(4):
+        r1.cmd(f'ip link set r1-eth{i} up')
 
-    # Désactiver IPv6 pour éviter le bruit dans Wireshark/Logs
-    info("[*] Desactivation IPv6\n")
-    for host in net.hosts:
-        host.cmd("sysctl -w net.ipv6.conf.all.disable_ipv6=1")
-        host.cmd("sysctl -w net.ipv6.conf.default.disable_ipv6=1")
-        host.cmd("sysctl -w net.ipv6.conf.lo.disable_ipv6=1")
+    info('*** TEST DE CONNECTIVITÉ INITIALE ***\n')
+    # Test ping h_lan vers sa passerelle r1
+    print("Test Ping LAN -> R1 (Passerelle):")
+    print(net.get('h_lan').cmd('ping -c 2 10.0.3.1'))
 
-    info("[*] Topologie prete. Test de connectivite initial...\n")
-    # Un petit test pour verifier que le WAN voit sa passerelle
-    print("Test ping WAN -> Firewall (Gateway): ", end="")
-    print(wan.cmd('ping -c 1 10.0.0.1 | grep "1 received"'))
-
+    info('*** Lancement de la console Mininet\n')
     CLI(net)
-
-    info("[*] Arret du reseau\n")
     net.stop()
 
 if __name__ == '__main__':
     setLogLevel('info')
-    create_topology()
+    setup_network()   
