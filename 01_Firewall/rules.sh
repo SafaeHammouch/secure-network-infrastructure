@@ -54,7 +54,7 @@ iptables -A FORWARD -p icmp -m limit --limit 1/s -j ACCEPT
 # 4. RÈGLES SPÉCIFIQUES PAR ZONES
 # ==========================================
 
-# --- A. ACCÈS PUBLIC VERS LA DMZ (Section 5.2) ---
+# --- A. ACCÈS PUBLIC VERS LA DMZ---
 echo "[*] Configuration DMZ..."
 # Autoriser HTTP (80) et HTTPS (443) depuis N'IMPORTE OÙ (WAN) vers la DMZ
 iptables -A FORWARD -i $WAN_IF -o $DMZ_IF -p tcp --dport 80 -j ACCEPT
@@ -65,16 +65,17 @@ echo "[*] Configuration LAN..."
 # Le LAN peut aller sur Internet (HTTP/HTTPS/DNS)
 iptables -A FORWARD -i $LAN_IF -o $WAN_IF -j ACCEPT
 
-# --- C. ACCÈS VPN (Section 5.4) ---
+# --- C. ACCÈS VPN  ---
 echo "[*] Configuration VPN..."
 # Autoriser la connexion au serveur OpenVPN (Port 1194 UDP) sur le FW lui-même
-iptables -A INPUT -i $WAN_IF -p udp --dport 1194 -j ACCEPT
+iptables -A FORWARD -i $WAN_IF -o $VPN_IF -p udp --dport 1194 -j ACCEPT
 # Une fois dans le tunnel (interface tun0, simulée ici par VPN_IF pour le test),
 # on autorise l'accès aux ressources
-iptables -A FORWARD -i $VPN_IF -o $LAN_IF -j ACCEPT
-iptables -A FORWARD -i $VPN_IF -o $DMZ_IF -j ACCEPT
+iptables -A FORWARD -s 10.8.0.0/24 -o $LAN_IF -j ACCEPT
+iptables -A FORWARD -s 10.8.0.0/24 -o $ADM_IF -j ACCEPT
+iptables -A FORWARD -s 10.8.0.0/24 -o $DMZ_IF -j ACCEPT
 
-# --- D. ADMINISTRATION (Section 5.3) ---
+# --- D. ADMINISTRATION ---
 echo "[*] Configuration SSH..."
 # SSH autorisé UNIQUEMENT depuis le réseau Admin ou VPN vers le Pare-feu
 iptables -A INPUT -i $ADM_IF -p tcp --dport 22 -j ACCEPT
