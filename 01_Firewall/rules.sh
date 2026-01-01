@@ -46,6 +46,7 @@ iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 # Autoriser le PING (ICMP) pour le debug (peut être restreint plus tard)
 # Limité à 1 ping par seconde pour éviter le flood
+#comment these lines in case of Zero Trust
 iptables -A INPUT -p icmp -m limit --limit 1/s -j ACCEPT
 iptables -A FORWARD -p icmp -m limit --limit 1/s -j ACCEPT
 
