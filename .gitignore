@@ -1,0 +1,9 @@
+*.key
+*.crt
+*.csr
+*.pem
+__pycache__/
+*.pyc
+02_Services_DMZ/certs/
+id_rsa
+id_rsa.pub
