@@ -10,53 +10,51 @@ HTTPS_PORT = 443
 CERT_FILE = 'certs/server.crt'
 KEY_FILE = 'certs/server.key'
 
-# Handler pour la redirection HTTP -> HTTPS
-class RedirectHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        # On renvoie une redirection 301 (Moved Permanently)
+# Handler pour la redirection STRICTE HTTP -> HTTPS
+class RedirectHandler(http.server.BaseHTTPRequestHandler):
+    def do_redirect(self):
         self.send_response(301)
-        # On reconstruit l'URL avec https://
-        new_location = f"https://{self.headers['Host']}{self.path}"
+        # On récupère l'hôte sans le port si présent
+        host = self.headers.get('Host', '10.0.1.2').split(':')[0]
+        new_location = f"https://{host}{self.path}"
         self.send_header('Location', new_location)
         self.end_headers()
         print(f"[HTTP] Redirection de {self.path} vers {new_location}")
 
-# Fonction pour lancer le serveur HTTP (Redirection)
+    def do_GET(self):
+        self.do_redirect()
+
+    def do_HEAD(self):
+        self.do_redirect()
+
+# Fonction pour lancer le serveur HTTP (Redirection seule)
 def run_http():
-    print(f"[*] Démarrage serveur HTTP sur le port {HTTP_PORT} (Redirection seule)")
+    print(f"[*] Démarrage serveur HTTP sur le port {HTTP_PORT} (Redirection forcée)")
+    # On utilise allow_reuse_address pour éviter les erreurs "Address already in use"
+    socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.TCPServer(("", HTTP_PORT), RedirectHandler)
     httpd.serve_forever()
 
 # Fonction pour lancer le serveur HTTPS (Contenu sécurisé)
 def run_https():
     print(f"[*] Démarrage serveur HTTPS sur le port {HTTPS_PORT}")
-    
-    # Création du contexte SSL
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
     
     server_address = ('', HTTPS_PORT)
-    # SimpleHTTPRequestHandler sert les fichiers du dossier courant (index.html)
+    # Ici on garde SimpleHTTPRequestHandler car on VEUT servir index.html
     httpd = http.server.HTTPServer(server_address, http.server.SimpleHTTPRequestHandler)
-    
-    # On enveloppe le socket avec SSL
     httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    # Vérification des fichiers
     if not os.path.exists(CERT_FILE) or not os.path.exists(KEY_FILE):
-        print("ERREUR: Certificats manquants. Lancez d'abord generate_ssl.sh")
+        print("ERREUR: Certificats manquants.")
         exit(1)
 
-    # Création d'un fichier index.html de test si absent
     if not os.path.exists("index.html"):
         with open("index.html", "w") as f:
             f.write("<h1>Bienvenue dans la DMZ Securisee (HTTPS)</h1><p>Projet LSI3 Zero Trust</p>")
 
-    # Lancement des threads
-    t1 = threading.Thread(target=run_http)
-    t2 = threading.Thread(target=run_https)
-    
-    t1.start()
-    t2.start()
+    threading.Thread(target=run_http, daemon=True).start()
+    run_https() # On lance le HTTPS dans le thread principal
