@@ -66,6 +66,7 @@ echo "[*] Configuration LAN..."
 # Le LAN peut aller sur Internet (HTTP/HTTPS/DNS)
 iptables -A FORWARD -i $LAN_IF -o $WAN_IF -j ACCEPT
 
+
 # --- C. ACCÈS VPN  ---
 echo "[*] Configuration VPN..."
 # Autoriser la connexion au serveur OpenVPN (Port 1194 UDP) sur le FW lui-même
@@ -83,7 +84,29 @@ iptables -A INPUT -i $ADM_IF -p tcp --dport 22 -j ACCEPT
 iptables -A INPUT -i $VPN_IF -p tcp --dport 22 -j ACCEPT
 
 # ==========================================
-# 5. JOURNALISATION (LOGGING)
+# 5. NAT (Pour l'accès Internet depuis LAN)
+# ==========================================
+echo "[*] Configuration du NAT pour l'accès Internet..."
+iptables -t nat -A POSTROUTING -o $WAN_IF -j MASQUERADE
+
+# ==========================================
+# 6. BLOCAGE EXPLICITE (Zero Trust)
+# ==========================================
+echo "[*] Application des blocages explicites..."
+
+# WAN ne peut PAS accéder au LAN/VPN/ADMIN
+iptables -A FORWARD -i $WAN_IF -o $LAN_IF -j DROP
+iptables -A FORWARD -i $WAN_IF -o $ADM_IF -j DROP
+iptables -A FORWARD -i $WAN_IF -o $VPN_IF -p tcp ! --dport 1194 -j DROP
+
+# DMZ ne peut PAS initier de connexions vers le LAN
+iptables -A FORWARD -i $DMZ_IF -o $LAN_IF -m state --state NEW -j DROP
+
+# VPN peut accéder au LAN/ADMIN seulement si authentifié
+# (À affiner avec les règles OpenVPN plus tard)
+
+# ==========================================
+# 6. JOURNALISATION (LOGGING)
 # ==========================================
 # Tout ce qui n'a pas été autorisé ci-dessus sera loggué avant d'être DROPpé par la politique par défaut
 echo "[*] Activation des logs..."
