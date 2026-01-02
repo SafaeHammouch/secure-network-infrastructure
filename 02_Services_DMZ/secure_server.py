@@ -13,13 +13,14 @@ KEY_FILE = 'certs/server.key'
 # Handler pour la redirection HTTP -> HTTPS
 class RedirectHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        # On renvoie une redirection 301 (Moved Permanently)
         self.send_response(301)
-        # On reconstruit l'URL avec https://
-        new_location = f"https://{self.headers['Host']}{self.path}"
+        new_location = f"https://{self.headers.get('Host', '10.0.1.2')}{self.path}"
         self.send_header('Location', new_location)
         self.end_headers()
-        print(f"[HTTP] Redirection de {self.path} vers {new_location}")
+        print(f"[HTTP] 301 → {new_location}")
+    
+    def do_HEAD(self):
+        self.do_GET()
 
 # Fonction pour lancer le serveur HTTP (Redirection)
 def run_http():
