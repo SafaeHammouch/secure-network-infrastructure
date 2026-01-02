@@ -79,12 +79,18 @@ mininet> fw /root/secure-network-infrastructure/01_Firewall/rules.sh
 > *   **Critical Test:** `h_wan` cannot access `h_lan` (Connection Refused/Timeout).
 
 ### Phase 2: Deploy Secure Web Service (DMZ)
-Starts a Python-based Web Server that forces HTTP connections to redirect to HTTPS.
+1. **Starts a Python-based Web Server that forces HTTP connections to redirect to HTTPS.**
 
 ```bash
 mininet> h_dmz cd /root/secure-network-infrastructure/02_Services_DMZ && ./install_web.sh &
 ```
+2. **Verify the ports**
+```bash
+mininet> h_dmz ss -tuln
+```
+the two ports 443 and 80 should be listening.
 
+4. 
 > **Verification:**
 > *   From WAN (Insecure): `h_wan curl -v http://10.0.1.2` (Should return **301 Moved Permanently**).
 > *   From WAN (Secure): `h_wan curl -k https://10.0.1.2` (Should return HTML content).
