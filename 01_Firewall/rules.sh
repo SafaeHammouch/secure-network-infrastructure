@@ -34,21 +34,22 @@ iptables -P OUTPUT ACCEPT
 # ==========================================
 echo "[*] Autorisation du trafic local et suivi de connexion..."
 
-# Autoriser la boucle locale (localhost) - vital pour le système
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
 
-# STATEFUL INSPECTION :
-# On autorise les réponses aux connexions légitimes qu'on a initiées
-# (Ex: Si le LAN demande une page Web, on laisse revenir la réponse du Web)
+# STATEFUL INSPECTION
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# Autoriser le PING (ICMP) pour le debug (peut être restreint plus tard)
-# Limité à 1 ping par seconde pour éviter le flood
-#comment these lines in case of Zero Trust
-iptables -A INPUT -p icmp -m limit --limit 1/s -j ACCEPT
-iptables -A FORWARD -p icmp -m limit --limit 1/s -j ACCEPT
+# --- NOUVELLES RÈGLES ICMP (ZERO TRUST) ---
+# On autorise le pare-feu lui-même à répondre au ping (pour le test)
+iptables -A INPUT -p icmp -j ACCEPT
+
+# On autorise le LAN à pinguer le WAN (pour tester Internet)
+iptables -A FORWARD -i $LAN_IF -o $WAN_IF -p icmp -j ACCEPT
+
+# On autorise l'ADMIN à pinguer tout le monde (pour la maintenance)
+iptables -A FORWARD -i $ADM_IF -p icmp -j ACCEPT
 
 # ==========================================
 # 4. RÈGLES SPÉCIFIQUES PAR ZONES
