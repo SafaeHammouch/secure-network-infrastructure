@@ -80,8 +80,8 @@ iptables -A FORWARD -s 10.8.0.0/24 -o $DMZ_IF -j ACCEPT
 # --- D. ADMINISTRATION ---
 echo "[*] Configuration SSH..."
 # SSH autorisé UNIQUEMENT depuis le réseau Admin ou VPN vers le Pare-feu
-iptables -A INPUT -i $ADM_IF -p tcp --dport 22 -j ACCEPT
-iptables -A INPUT -i $VPN_IF -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -i $ADM_IF -p tcp --dport 2222 -j ACCEPT
+iptables -A INPUT -i $VPN_IF -p tcp --dport 2222 -j ACCEPT
 
 # ==========================================
 # 5. NAT (Pour l'accès Internet depuis LAN)
