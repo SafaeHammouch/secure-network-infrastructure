@@ -140,17 +140,62 @@ mininet> h_admin cd /secure-network-infrastructure/04_Admin_SSH && ./setup_ssh.s
 > *Expected: Failed connection due to Zero Trust Principle *
 
 ### Phase 5: Deploy Intrusion Detection System (Snort)
-Monitors network traffic and detects malicious activities.
+Monitors network traffic and detects malicious activities including scans, brute-force SSH, and web attacks.
 
+**Prerequisites (install before starting Mininet):**
 ```bash
-mininet> r cd /secure-network-infrastructure/05_IDS_Snort && ./start_snort.sh r-eth1 &
+sudo apt-get update
+sudo apt-get install -y snort
 ```
 
+1. **Start Snort IDS:**
+    ```bash
+    mininet> fw bash /home/zakariae-azn/secure-network-infrastructure/05_IDS_Snort/start_snort.sh fw-eth1
+    ```
+    *Expected output:*
+    ```
+    [INFO] Démarrage de Snort sur l'interface fw-eth1
+    [INFO] Configuration: /home/zakariae-azn/secure-network-infrastructure/05_IDS_Snort/snort.conf
+    [INFO] Logs: /var/log/snort
+    [OK] Snort démarré (PID: XXXX)
+    [INFO] Alertes: tail -f /var/log/snort/alerts.txt
+    ```
+
+2. **Monitor alerts in real-time:**
+    ```bash
+    mininet> fw tail -f /var/log/snort/alerts.txt
+    ```
+    *This command will continuously display Snort alerts as they are detected. Press Ctrl+C to stop monitoring.*
+
+3. **Test detections:**
+    ```bash
+    # Test scan detection (T7.1)
+    mininet> h_wan ping -c 5 10.0.1.2
+    mininet> h_wan nmap -sS 10.0.1.2
+    ```
+    *Expected: Alert "ALERTE: Scan Nmap/Ping detecte" appears in `/var/log/snort/alerts.txt`*
+    
+    ```bash
+    # Test SSH brute-force detection (T7.2)
+    mininet> h_wan for i in {1..10}; do ssh -p 2222 root@10.0.4.2; done
+    ```
+    *Expected: Alert "ALERTE: Tentative connexion SSH" or "ALERTE: Brute-force SSH detecte" appears*
+    
+    ```bash
+    # Test web attack detection (T7.3)
+    mininet> h_wan curl "http://10.0.1.2/?id=1 union select * from users"
+    ```
+    *Expected: Alert "ALERTE: Tentative SQL Injection HTTP" appears*
+
+4. **Enable IDS/Firewall correlation (optional):**
+    ```bash
+    mininet> fw bash /home/zakariae-azn/secure-network-infrastructure/05_IDS_Snort/ids_firewall_correlation.sh
+    ```
+    *Automatically blocks malicious IPs detected by Snort*
+
 > **Verification:**
-> ```bash
-> mininet> h_wan ping -c 5 10.0.1.2
-> ```
-> *Expected: Snort alert "ALERTE: Scan Nmap/Ping detecte"*
+> *   Snort alerts appear in `/var/log/snort/alerts.txt`
+> *   Expected alerts: "ALERTE: Scan Nmap/Ping detecte", "ALERTE: Brute-force SSH detecte", "ALERTE: Tentative SQL Injection"
 
 ### Phase 6: Enable High Availability (Heartbeat)
 Implements Active/Passive cluster with virtual IP failover.
@@ -193,9 +238,10 @@ secure-network-infrastructure/
 │   ├── id_rsa             # Private key (generated)
 │   └── id_rsa.pub         # Public key (generated)
 ├── 05_IDS_Snort/
-│   ├── start_snort.sh     # Snort launcher script
-│   ├── snort.conf         # Minimal Snort configuration
-│   └── local.rules        # Custom detection rules
+│   ├── start_snort.sh            # Snort launcher script
+│   ├── snort.conf                # Minimal Snort configuration
+│   ├── local.rules               # Custom detection rules
+│   └── ids_firewall_correlation.sh  # IDS/Firewall correlation
 ├── 06_HA_Heartbeat/
 │   └── ha_manager.py      # Active/Passive cluster manager
 └── README.md              # Documentation
