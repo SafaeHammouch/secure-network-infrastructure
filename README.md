@@ -198,24 +198,60 @@ sudo apt-get install -y snort
 > *   Expected alerts: "ALERTE: Scan Nmap/Ping detecte", "ALERTE: Brute-force SSH detecte", "ALERTE: Tentative SQL Injection"
 
 ### Phase 6: Enable High Availability (Heartbeat)
-Implements Active/Passive cluster with virtual IP failover.
+Implements Active/Passive cluster with virtual IP failover for DMZ services using Keepalived (VRRP).
 
-1.  **Start Master Node:**
+**Prerequisites:**
+```bash
+sudo apt-get install -y keepalived
+```
+
+**Note:** This requires a second DMZ host (`h_dmz2`).
+
+1. **Start Master Node:**
     ```bash
-    mininet> h_dmz cd /secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py master &
+    mininet> h_dmz bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh master &
+    ```
+    *Expected output:*
+    ```
+    [HA] Démarrage en mode MASTER
+    [OK] Keepalived démarré
+    [INFO] VIP: 10.0.1.100
     ```
 
-2.  **Start Backup Node:**
+2. **Start Backup Node:**
     ```bash
-    mininet> h_dmz2 cd /secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py backup &
+    mininet> h_dmz2 bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh backup &
+    ```
+    *Expected output:*
+    ```
+    [HA] Démarrage en mode BACKUP
+    [OK] Keepalived démarré
+    [INFO] VIP: 10.0.1.100
     ```
 
-> **Verification:**
-> ```bash
-> mininet> h_wan ping -c 3 10.0.1.100
-> ```
-> Stop master and verify backup takes over the virtual IP.
+3. **Test Virtual IP (VIP):**
+    ```bash
+    mininet> h_wan ping -c 3 10.0.1.100
+    ```
+    *Expected: 0% packet loss - VIP responds*
 
+4. **Simulate Failover (T9.2):**
+    ```bash
+    # Stop master node
+    mininet> h_dmz pkill -f keepalived
+    ```
+    *Expected: Backup detects failure and takes over VIP within 2-3 seconds*
+    
+    ```bash
+    # Verify VIP still responds
+    mininet> h_wan ping -c 3 10.0.1.100
+    ```
+    *Expected: Minimal packet loss during failover, then 0% loss*
+
+> **Verification (T9.x):**
+> *   T9.1: Master node responds to VIP initially
+> *   T9.2: Automatic failover when master fails
+> *   T9.3: Service continuity maintained (brief interruption < 3s)
 ---
 
 ## 📂 Project Structure
