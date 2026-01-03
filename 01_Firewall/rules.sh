@@ -1,4 +1,4 @@
-#!/bin/bash
+j A#!/bin/bash
 
 # ==========================================
 # CONFIGURATION DES VARIABLES (Pour la lisibilité)
@@ -17,6 +17,9 @@ iptables -F
 iptables -X
 iptables -t nat -F
 iptables -t nat -X
+
+# ---ROUTE DE RETOUR VPN ---
+ip route add 10.8.0.0/24 via 10.0.3.2 2>/dev/null
 
 # ==========================================
 # 2. POLITIQUE PAR DÉFAUT : ZERO TRUST

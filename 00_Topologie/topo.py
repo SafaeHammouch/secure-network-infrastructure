@@ -75,6 +75,9 @@ def setup_network():
     for i in range(5):
         fw.cmd(f'ip link set fw-eth{i} up')
 
+    #--- ACTIVATION ROUTAGE SERVEUR VPN ---
+    h_vpn.cmd('sysctl -w net.ipv4.ip_forward=1')
+
     # Désactivation IPv6 (Optionnel mais propre)
     for host in net.hosts:
         host.cmd("sysctl -w net.ipv6.conf.all.disable_ipv6=1")

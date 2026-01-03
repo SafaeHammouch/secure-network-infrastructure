@@ -33,6 +33,8 @@ ifconfig 10.8.0.2 10.8.0.1
 secret static.key
 proto udp
 cipher AES-256-CBC
+# --- ROUTE AUTO VERS LAN ---
+route 10.0.2.0 255.255.255.0
 verb 3
 EOF
 
