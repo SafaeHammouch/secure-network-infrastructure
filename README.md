@@ -49,7 +49,6 @@ sudo ln -s /usr/bin/ovs-testcontroller /usr/bin/controller
 
 ### 1. Clone the Repository
 ```bash
-cd /root/
 git clone https://github.com/SafaeHammouch/secure-network-infrastructure.git
 cd secure-network-infrastructure
 ```
@@ -72,7 +71,7 @@ Once inside the Mininet CLI (`mininet>`), follow these steps to activate the sec
 By default, the router might allow traffic. We must apply the **DROP all** policy and only allow specific flows.
 
 ```bash
-mininet> fw /root/secure-network-infrastructure/01_Firewall/rules.sh
+mininet> fw /secure-network-infrastructure/01_Firewall/rules.sh
 ```
 > **Verification:** 
 > *   `pingall` might show packet loss (10-20% due to limiting) or success depending on config.
@@ -82,7 +81,7 @@ mininet> fw /root/secure-network-infrastructure/01_Firewall/rules.sh
 1. **Starts a Python-based Web Server that forces HTTP connections to redirect to HTTPS.**
 
 ```bash
-mininet> h_dmz cd /root/secure-network-infrastructure/02_Services_DMZ && ./install_web.sh &
+mininet> h_dmz cd /secure-network-infrastructure/02_Services_DMZ && ./install_web.sh &
 ```
 2. **Verify the ports**
 ```bash
@@ -100,17 +99,17 @@ Sets up an OpenVPN tunnel between the external user (`h_wan`) and the internal V
 
 1.  **Generate Keys & Configs (Automatic):**
     ```bash
-    mininet> h_vpn cd /root/secure-network-infrastructure/03_VPN && ./setup_vpn.sh
+    mininet> h_vpn cd /secure-network-infrastructure/03_VPN && ./setup_vpn.sh
     ```
 
 2.  **Start VPN Server:**
     ```bash
-    mininet> h_vpn cd /root/secure-network-infrastructure/03_VPN && openvpn --config server.conf &
+    mininet> h_vpn cd /secure-network-infrastructure/03_VPN && openvpn --config server.conf &
     ```
 
 3.  **Start VPN Client (External User):**
     ```bash
-    mininet> h_wan cd /root/secure-network-infrastructure/03_VPN && openvpn --config client.conf &
+    mininet> h_wan cd /secure-network-infrastructure/03_VPN && openvpn --config client.conf &
     ```
 
 > **Verification:**
@@ -124,19 +123,19 @@ Sets up an OpenVPN tunnel between the external user (`h_wan`) and the internal V
 Sets up SSH server with key-based authentication only on port 2222.
 
 ```bash
-mininet> h_admin cd /root/secure-network-infrastructure/04_Admin_SSH && ./setup_ssh.sh
+mininet> h_admin cd /secure-network-infrastructure/04_Admin_SSH && ./setup_ssh.sh
 ```
 
 > **1. Verification from an authorized zone (Admin network or VPN) :**
 > ```bash
-> mininet> h_admin ssh -p 2222 -i /root/secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
+> mininet> h_admin ssh -p 2222 -i /secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
 > ```
 > *Expected: Successful connection without password prompt*
 
 > **2. Verification from a non-authorized zone (LAN):**
 
 > ```bash
-> mininet> h_lan ssh -p 2222 -i /root/secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
+> mininet> h_lan ssh -p 2222 -i /secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
 > ```
 > *Expected: Failed connection due to Zero Trust Principle *
 
@@ -144,7 +143,7 @@ mininet> h_admin cd /root/secure-network-infrastructure/04_Admin_SSH && ./setup_
 Monitors network traffic and detects malicious activities.
 
 ```bash
-mininet> r cd /root/secure-network-infrastructure/05_IDS_Snort && ./start_snort.sh r-eth1 &
+mininet> r cd /secure-network-infrastructure/05_IDS_Snort && ./start_snort.sh r-eth1 &
 ```
 
 > **Verification:**
@@ -158,12 +157,12 @@ Implements Active/Passive cluster with virtual IP failover.
 
 1.  **Start Master Node:**
     ```bash
-    mininet> h_dmz cd /root/secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py master &
+    mininet> h_dmz cd /secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py master &
     ```
 
 2.  **Start Backup Node:**
     ```bash
-    mininet> h_dmz2 cd /root/secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py backup &
+    mininet> h_dmz2 cd /secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py backup &
     ```
 
 > **Verification:**
