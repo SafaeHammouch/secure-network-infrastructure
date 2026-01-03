@@ -1,15 +1,30 @@
-# ---------------- LOCAL RULES ----------------
+# ========================================
+# Règles Snort personnalisées - Zero Trust
+# ========================================
 
-# T7.1 - Détection de Scan Nmap (ICMP Echo Request - Ping Scan)
-# On détecte si quelqu'un ping le réseau.
-alert icmp any any -> any any (msg:"ALERTE: Scan Nmap/Ping detecte"; sid:1000001; rev:1; classtype:attempted-recon;)
+# --- Détection de scans réseau (Nmap, ping sweep) ---
+alert icmp any any -> $HOME_NET any (msg:"ALERTE: Scan Nmap/Ping detecte"; sid:1000001; rev:1;)
+alert tcp any any -> $HOME_NET any (flags:S; msg:"ALERTE: Scan SYN detecte"; threshold:type threshold, track by_src, count 20, seconds 10; sid:1000002; rev:1;)
+alert tcp any any -> $HOME_NET any (flags:FPU; msg:"ALERTE: Scan XMAS detecte"; sid:1000003; rev:1;)
+alert tcp any any -> $HOME_NET any (flags:0; msg:"ALERTE: Scan NULL detecte"; sid:1000004; rev:1;)
 
-# T7.2 - Détection Brute-force SSH (Port 2222 comme tu l'as configuré)
-# Si plus de 5 tentatives de connexion en 60 secondes depuis la même IP.
-alert tcp any any -> any 2222 (msg:"ALERTE: Tentative Brute-force SSH"; flags:S; flow:stateless; detection_filter:track by_src, count 5, seconds 60; sid:1000002; rev:1; classtype:suspicious-login;)
+# --- Détection brute-force SSH ---
+alert tcp any any -> $HOME_NET 22 (msg:"ALERTE: Tentative connexion SSH"; threshold:type threshold, track by_src, count 5, seconds 60; sid:1000010; rev:1;)
+alert tcp any any -> $HOME_NET 2222 (msg:"ALERTE: Tentative connexion SSH port 2222"; threshold:type threshold, track by_src, count 5, seconds 60; sid:1000011; rev:1;)
+alert tcp any any -> $HOME_NET 22 (msg:"ALERTE: Brute-force SSH detecte"; content:"SSH"; threshold:type both, track by_src, count 10, seconds 120; sid:1000012; rev:1;)
 
-# T7.3 - Détection Attaque Web (Tentative d'accès à /etc/passwd)
-# On cherche la chaine "/etc/passwd" dans le trafic HTTP vers la DMZ.
-# Note : Cela ne fonctionne que sur le port 80 (avant redirection HTTPS) ou si tu déchiffres le SSL (complexe).
-# Pour le projet, on teste sur le port 80.
-alert tcp any any -> any 80 (msg:"ALERTE: Attaque Web Detectee (/etc/passwd)"; content:"/etc/passwd"; nocase; sid:1000003; rev:1; classtype:web-application-attack;)
+# --- Détection attaques web (SQL injection, XSS, path traversal) ---
+alert tcp any any -> $HOME_NET 80 (msg:"ALERTE: Tentative SQL Injection HTTP"; content:"union"; nocase; content:"select"; nocase; sid:1000020; rev:1;)
+alert tcp any any -> $HOME_NET 443 (msg:"ALERTE: Tentative SQL Injection HTTPS"; content:"union"; nocase; content:"select"; nocase; sid:1000021; rev:1;)
+alert tcp any any -> $HOME_NET 80 (msg:"ALERTE: Tentative XSS detectee"; content:"<script"; nocase; sid:1000022; rev:1;)
+alert tcp any any -> $HOME_NET any (msg:"ALERTE: Path Traversal detecte"; content:"../"; sid:1000023; rev:1;)
+alert tcp any any -> $HOME_NET 80 (msg:"ALERTE: Scan vulnerabilite web"; content:"nikto"; nocase; sid:1000024; rev:1;)
+
+# --- Détection attaques DoS/DDoS ---
+alert tcp any any -> $HOME_NET 80 (msg:"ALERTE: Possible attaque DoS HTTP"; threshold:type threshold, track by_src, count 100, seconds 10; sid:1000030; rev:1;)
+alert tcp any any -> $HOME_NET 443 (msg:"ALERTE: Possible attaque DoS HTTPS"; threshold:type threshold, track by_src, count 100, seconds 10; sid:1000031; rev:1;)
+
+# --- Détection tentatives d'accès non autorisé ---
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"ALERTE: Tentative Telnet non autorisee"; sid:1000040; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 3389 (msg:"ALERTE: Tentative RDP non autorisee"; sid:1000041; rev:1;)
+alert tcp any any -> $HOME_NET any (msg:"ALERTE: Trafic suspect vers zone protegee"; threshold:type threshold, track by_src, count 50, seconds 30; sid:1000042; rev:1;)
