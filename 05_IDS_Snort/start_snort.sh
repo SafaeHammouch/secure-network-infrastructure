@@ -1,19 +1,39 @@
 #!/bin/bash
-# start_snort.sh
-# Lance Snort en mode console pour voir les alertes en direct
+# ========================================
+# Script de lancement Snort IDS
+# ========================================
 
-IFACE=$1
-if [ -z "$IFACE" ]; then
-    echo "Usage: ./start_snort.sh <interface>"
-    echo "Exemple: ./start_snort.sh r-eth1"
+INTERFACE=$1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONF_FILE="$SCRIPT_DIR/snort.conf"
+LOG_DIR="/var/log/snort"
+
+if [ -z "$INTERFACE" ]; then
+    echo "Usage: $0 <interface>"
+    echo "Exemple: $0 r-eth1"
     exit 1
 fi
 
-echo "[*] Démarrage de Snort sur l'interface $IFACE..."
-# -A console : affiche les alertes à l'écran
-# -q : mode silencieux (pas de bannière de démarrage)
-# -c : fichier de config
-# -l : dossier de logs (crée le s'il n'existe pas)
+# Créer le répertoire de logs
+mkdir -p $LOG_DIR 2>/dev/null
 
-mkdir -p /var/log/snort
-snort -A console -q -c snort.conf -i $IFACE
+# Vérifier si Snort est installé
+if ! command -v snort &> /dev/null; then
+    echo "[INFO] Installation de Snort..."
+    apt-get update -qq
+    apt-get install -y snort 2>/dev/null || {
+        echo "[ERREUR] Impossible d'installer Snort"
+        exit 1
+    }
+fi
+
+echo "[INFO] Démarrage de Snort sur l'interface $INTERFACE"
+echo "[INFO] Configuration: $CONF_FILE"
+echo "[INFO] Logs: $LOG_DIR"
+
+# Lancer Snort en mode IDS
+snort -i $INTERFACE -c $CONF_FILE -l $LOG_DIR -A fast -q &
+
+SNORT_PID=$!
+echo "[OK] Snort démarré (PID: $SNORT_PID)"
+echo "[INFO] Alertes: tail -f $LOG_DIR/alerts.txt"
