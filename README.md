@@ -127,11 +127,18 @@ Sets up SSH server with key-based authentication only on port 2222.
 mininet> h_admin cd /root/secure-network-infrastructure/04_Admin_SSH && ./setup_ssh.sh
 ```
 
-> **Verification:**
+> **1. Verification from an authorized zone (Admin network or VPN) :**
+> ```bash
+> mininet> h_admin ssh -p 2222 -i /root/secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
+> ```
+> *Expected: Successful connection without password prompt*
+
+> **2. Verification from a non-authorized zone (LAN):**
+
 > ```bash
 > mininet> h_lan ssh -p 2222 -i /root/secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
 > ```
-> *Expected: Successful connection without password prompt*
+> *Expected: Failed connection due to Zero Trust Principle *
 
 ### Phase 5: Deploy Intrusion Detection System (Snort)
 Monitors network traffic and detects malicious activities.
