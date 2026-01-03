@@ -120,6 +120,51 @@ Sets up an OpenVPN tunnel between the external user (`h_wan`) and the internal V
 > ```
 > *Result: 0% Packet Loss indicates the encrypted tunnel is active.*
 
+### Phase 4: Configure Secure SSH Administration
+Sets up SSH server with key-based authentication only on port 2222.
+
+```bash
+mininet> h_admin cd /root/secure-network-infrastructure/04_Admin_SSH && ./setup_ssh.sh
+```
+
+> **Verification:**
+> ```bash
+> mininet> h_lan ssh -p 2222 -i /root/secure-network-infrastructure/04_Admin_SSH/id_rsa root@10.0.4.2
+> ```
+> *Expected: Successful connection without password prompt*
+
+### Phase 5: Deploy Intrusion Detection System (Snort)
+Monitors network traffic and detects malicious activities.
+
+```bash
+mininet> r cd /root/secure-network-infrastructure/05_IDS_Snort && ./start_snort.sh r-eth1 &
+```
+
+> **Verification:**
+> ```bash
+> mininet> h_wan ping -c 5 10.0.1.2
+> ```
+> *Expected: Snort alert "ALERTE: Scan Nmap/Ping detecte"*
+
+### Phase 6: Enable High Availability (Heartbeat)
+Implements Active/Passive cluster with virtual IP failover.
+
+1.  **Start Master Node:**
+    ```bash
+    mininet> h_dmz cd /root/secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py master &
+    ```
+
+2.  **Start Backup Node:**
+    ```bash
+    mininet> h_dmz2 cd /root/secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py backup &
+    ```
+
+> **Verification:**
+> ```bash
+> mininet> h_wan ping -c 3 10.0.1.100
+> ```
+> Stop master and verify backup takes over the virtual IP.
+
 ---
 
 ## 📂 Project Structure
@@ -137,6 +182,16 @@ secure-network-infrastructure/
 ├── 03_VPN/
 │   ├── setup_vpn.sh       # Script to install OpenVPN & generate keys
 │   └── (Generated configs: server.conf, client.conf, static.key)
+├── 04_Admin_SSH/
+│   ├── setup_ssh.sh       # SSH hardening script (key-only auth)
+│   ├── id_rsa             # Private key (generated)
+│   └── id_rsa.pub         # Public key (generated)
+├── 05_IDS_Snort/
+│   ├── start_snort.sh     # Snort launcher script
+│   ├── snort.conf         # Minimal Snort configuration
+│   └── local.rules        # Custom detection rules
+├── 06_HA_Heartbeat/
+│   └── ha_manager.py      # Active/Passive cluster manager
 └── README.md              # Documentation
 ```
 
