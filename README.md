@@ -198,23 +198,72 @@ sudo apt-get install -y snort
 > *   Expected alerts: "ALERTE: Scan Nmap/Ping detecte", "ALERTE: Brute-force SSH detecte", "ALERTE: Tentative SQL Injection"
 
 ### Phase 6: Enable High Availability (Heartbeat)
-Implements Active/Passive cluster with virtual IP failover.
+Implements Active/Passive firewall cluster with virtual IP failover using Keepalived (VRRP).
 
-1.  **Start Master Node:**
+**Prerequisites:**
+```bash
+sudo apt-get install -y keepalived
+```
+
+**Note:** This requires two firewalls (`fw1` and `fw2`) in the topology.
+
+1. **Start Master Firewall (fw1):**
     ```bash
-    mininet> h_dmz cd /secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py master &
+    mininet> fw1 bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh master &
+    ```
+    *Expected output:*
+    ```
+    [HA] Démarrage en mode MASTER
+    [OK] Keepalived démarré
+    [INFO] VIP: 10.0.0.1, 10.0.1.1, 10.0.2.1, 10.0.3.1, 10.0.4.1
     ```
 
-2.  **Start Backup Node:**
+2. **Start Backup Firewall (fw2):**
     ```bash
-    mininet> h_dmz2 cd /secure-network-infrastructure/06_HA_Heartbeat && python3 ha_manager.py backup &
+    mininet> fw2 bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh backup &
+    ```
+    *Expected output:*
+    ```
+    [HA] Démarrage en mode BACKUP
+    [OK] Keepalived démarré
+    [INFO] VIP: 10.0.0.1, 10.0.1.1, 10.0.2.1, 10.0.3.1, 10.0.4.1
     ```
 
-> **Verification:**
-> ```bash
-> mininet> h_wan ping -c 3 10.0.1.100
-> ```
-> Stop master and verify backup takes over the virtual IP.
+3. **Test Virtual IPs (VIP):**
+    ```bash
+    # Test gateway connectivity
+    mininet> h_wan ping -c 3 10.0.0.1
+    mininet> h_dmz ping -c 3 10.0.1.1
+    mininet> h_lan ping -c 3 10.0.2.1
+    ```
+    *Expected: 0% packet loss - VIPs respond via fw1*
+
+4. **Simulate Failover (T9.2):**
+    ```bash
+    # Stop master firewall
+    mininet> fw1 pkill -f keepalived
+    ```
+    *Expected: fw2 detects failure and takes over all VIPs within 1-2 seconds*
+    
+    ```bash
+    # Verify VIPs still respond
+    mininet> h_wan ping -c 3 10.0.0.1
+    mininet> h_lan ping -c 3 10.0.2.1
+    ```
+    *Expected: Minimal packet loss during failover (1-2 packets), then 0% loss*
+
+5. **Verify failover:**
+    ```bash
+    # Check which firewall has the VIPs
+    mininet> fw2 ip addr show | grep "10.0"
+    ```
+    *Expected: All VIPs (10.0.0.1, 10.0.1.1, etc.) now on fw2*
+
+> **Verification (T9.x):**
+> *   T9.1: Master firewall (fw1) responds to all VIPs initially
+> *   T9.2: Automatic failover when fw1 fails
+> *   T9.3: Service continuity maintained (brief interruption < 2s)
+> *   All zones remain accessible through VIPs after failover
 
 ---
 

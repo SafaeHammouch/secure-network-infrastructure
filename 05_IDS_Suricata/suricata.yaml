@@ -1,0 +1,39 @@
+%YAML 1.1
+---
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8,192.168.0.0/16]"
+    EXTERNAL_NET: "!$HOME_NET"
+    DMZ_NET: "10.0.1.0/24"
+    LAN_NET: "10.0.2.0/24"
+    VPN_NET: "10.0.3.0/24"
+    ADMIN_NET: "10.0.4.0/24"
+  
+  port-groups:
+    HTTP_PORTS: "80"
+    HTTPS_PORTS: "443"
+    SSH_PORTS: "[22,2222]"
+
+outputs:
+  - fast:
+      enabled: yes
+      filename: fast.log
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+
+default-rule-path: /home/zakariae-azn/secure-network-infrastructure/05_IDS_Suricata
+rule-files:
+  - local.rules
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+    - file:
+        enabled: yes
+        filename: suricata.log

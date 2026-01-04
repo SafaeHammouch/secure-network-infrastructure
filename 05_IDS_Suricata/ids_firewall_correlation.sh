@@ -3,12 +3,12 @@
 # Corrélation IDS/Firewall - Blocage automatique
 # ========================================
 
-LOG_FILE="/var/log/snort/alerts.txt"
+LOG_FILE="/var/log/suricata/fast.log"
 BLOCKED_IPS="/tmp/blocked_ips.txt"
 
 touch $BLOCKED_IPS
 
-echo "[INFO] Surveillance des alertes Snort..."
+echo "[INFO] Surveillance des alertes Suricata..."
 echo "[INFO] Blocage automatique des IPs malveillantes"
 
 # Surveiller les logs en temps réel
