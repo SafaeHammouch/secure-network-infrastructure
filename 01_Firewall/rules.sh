@@ -1,6 +1,17 @@
 #!/bin/bash
-PREFIX=$(hostname)
-WAN_IF="${PREFIX}-eth0"
+# --- AUTO-DETECTION OF PREFIX ---
+DETECTED_IF=$(ls /sys/class/net | grep "\-eth0" | head -n 1)
+
+if [ -z "$DETECTED_IF" ]; then
+    echo "ERROR: Could not detect network interface pattern."
+    exit 1
+fi
+
+# We strip the "-eth0" suffix to get just "fw1" or "fw2"
+PREFIX=${DETECTED_IF%-eth0}
+# --------------------------------
+
+echo "Detected Prefix: $PREFIX"WAN_IF="${PREFIX}-eth0"
 DMZ_IF="${PREFIX}-eth1"
 LAN_IF="${PREFIX}-eth2"
 VPN_IF="${PREFIX}-eth3"
