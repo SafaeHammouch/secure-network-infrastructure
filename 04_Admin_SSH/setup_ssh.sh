@@ -33,6 +33,11 @@ echo "[SSH] Démarrage du service SSH sur le port 2222..."
 # Arrêter l'instance précédente si elle existe
 pkill -f "sshd.*sshd_config_secure" 2>/dev/null
 
+# === MODIFICATION ICI ===
+# Création du dossier nécessaire pour la séparation des privilèges SSH
+mkdir -p /run/sshd
+# ========================
+
 # Lancer sshd avec notre config
 /usr/sbin/sshd -f /etc/ssh/sshd_config_secure
 
