@@ -24,11 +24,6 @@ iptables -A OUTPUT -o lo -j ACCEPT
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# 4. === CORRECTIF MANUEL INTÉGRÉ : LOG EN PREMIER ===
-# On logue les tentatives de connexion AVANT de les accepter ou refuser
-# Cela garantit que le script de validation trouve des traces
-iptables -A FORWARD -j LOG --log-prefix "FW-TRAFFIC: " --log-level 4
-
 # 5. ICMP
 iptables -A INPUT -p icmp -j ACCEPT
 iptables -A FORWARD -i $LAN_IF -o $WAN_IF -p icmp -j ACCEPT
@@ -49,14 +44,17 @@ iptables -A FORWARD -s 10.8.0.0/24 -o $LAN_IF -j ACCEPT
 iptables -A FORWARD -s 10.8.0.0/24 -o $ADM_IF -j ACCEPT
 iptables -A FORWARD -s 10.8.0.0/24 -o $DMZ_IF -j ACCEPT
 
+# 4. === CORRECTIF MANUEL INTÉGRÉ : LOG EN PREMIER ===
+# On logue les tentatives de connexion AVANT de les accepter ou refuser
+# Cela garantit que le script de validation trouve des traces
+# ----> MOVED after all ACCEPT rules
+iptables -A FORWARD -j LOG --log-prefix "FW-DROP-FORWARD: " --log-level 4
+
 # 8. SSH
 iptables -A INPUT -i $ADM_IF -p tcp --dport 2222 -j ACCEPT
 iptables -A INPUT -i $VPN_IF -p tcp --dport 2222 -j ACCEPT
 
 # 9. NAT
 iptables -t nat -A POSTROUTING -o $WAN_IF -j MASQUERADE
-
-# 10. Log des rejets finaux (FW-DROP)
-iptables -A FORWARD -j LOG --log-prefix "FW-DROP-FORWARD: " --log-level 4
 
 echo "[OK] Pare-feu configuré (Version Finale)."
