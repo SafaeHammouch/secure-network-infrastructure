@@ -5,11 +5,11 @@ from mininet.node import Node, OVSSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 
-# On définit une classe pour le routeur/pare-feu
+# Classe pour les routeurs (Pare-feux)
 class LinuxRouter(Node):
     def config(self, **params):
         super(LinuxRouter, self).config(**params)
-        # Activer le routage IP
+        # Activer le routage IP (Forwarding)
         self.cmd('sysctl -w net.ipv4.ip_forward=1')
 
     def terminate(self):
@@ -17,43 +17,37 @@ class LinuxRouter(Node):
         super(LinuxRouter, self).terminate()
 
 def setup_network():
-    # controller=None est parfait ici
     net = Mininet(topo=None, build=False, controller=None)
 
-    info('*** Création du Pare-feu central (Router)\n')
-    # On l'appelle 'fw' pour coller au rapport, IP initiale sur l'interface par défaut
-    fw = net.addHost('fw', cls=LinuxRouter, ip='10.0.0.1/24')
+    info('*** Création du Cluster de Pare-feu (Haute Disponibilité)\n')
+    # Les hôtes utilisent 10.0.x.1 comme passerelle.
+    # fw1 possède les IPs réelles .11 et fw2 possède .12
+    fw1 = net.addHost('fw1', cls=LinuxRouter, ip='10.0.0.11/24')
+    fw2 = net.addHost('fw2', cls=LinuxRouter, ip='10.0.0.12/24')
     
     info('*** Création des Hôtes par zone\n')
-    # WAN (Internet simulé)
+    # Tous les hôtes pointent vers l'IP virtuelle .1 (Gateway)
     h_wan = net.addHost('h_wan', ip='10.0.0.2/24', defaultRoute='via 10.0.0.1')
-    # DMZ (Serveurs Web)
     h_dmz = net.addHost('h_dmz', ip='10.0.1.2/24', defaultRoute='via 10.0.1.1')
-    # LAN (Interne)
     h_lan = net.addHost('h_lan', ip='10.0.2.2/24', defaultRoute='via 10.0.2.1')
-    # VPN (Accès distant) - AJOUTÉ SELON LE PROJET
     h_vpn = net.addHost('h_vpn', ip='10.0.3.2/24', defaultRoute='via 10.0.3.1')
-    # ADMIN (Gestion)
     h_adm = net.addHost('h_admin', ip='10.0.4.2/24', defaultRoute='via 10.0.4.1')
 
-    info('*** Création des switches (Zones)\n')
-    # failMode='standalone' est crucial ici
+    info('*** Création des switches de zones\n')
     s_wan = net.addSwitch('s1', cls=OVSSwitch, failMode='standalone')
     s_dmz = net.addSwitch('s2', cls=OVSSwitch, failMode='standalone')
     s_lan = net.addSwitch('s3', cls=OVSSwitch, failMode='standalone')
     s_vpn = net.addSwitch('s4', cls=OVSSwitch, failMode='standalone')
     s_adm = net.addSwitch('s5', cls=OVSSwitch, failMode='standalone')
 
-    info('*** Création des liens physiques\n')
-    # Connexion du FW aux 5 zones
-    # Note: L'ordre de création détermine souvent les noms eth0, eth1, etc.
-    net.addLink(fw, s_wan, intfName1='fw-eth0') # Vers WAN
-    net.addLink(fw, s_dmz, intfName1='fw-eth1') # Vers DMZ
-    net.addLink(fw, s_lan, intfName1='fw-eth2') # Vers LAN
-    net.addLink(fw, s_vpn, intfName1='fw-eth3') # Vers VPN
-    net.addLink(fw, s_adm, intfName1='fw-eth4') # Vers ADMIN
+    info('*** Connexion redondante (HA) des Pare-feux aux zones\n')
+    # On connecte CHAQUE pare-feu à CHAQUE switch
+    zones = [s_wan, s_dmz, s_lan, s_vpn, s_adm]
+    for i, sw in enumerate(zones):
+        net.addLink(fw1, sw, intfName1=f'fw1-eth{i}')
+        net.addLink(fw2, sw, intfName1=f'fw2-eth{i}')
 
-    # Connexion des hôtes aux switches
+    info('*** Connexion des hôtes aux switches\n')
     net.addLink(h_wan, s_wan)
     net.addLink(h_dmz, s_dmz)
     net.addLink(h_lan, s_lan)
@@ -64,25 +58,35 @@ def setup_network():
     net.build()
     net.start()
 
-    info('*** Configuration des IPs sur le Pare-feu\n')
-    # L'IP 10.0.0.1 est déjà sur fw-eth0 grâce au constructeur, on configure les autres
-    fw.cmd('ip addr add 10.0.1.1/24 dev fw-eth1') # DMZ GW
-    fw.cmd('ip addr add 10.0.2.1/24 dev fw-eth2') # LAN GW
-    fw.cmd('ip addr add 10.0.3.1/24 dev fw-eth3') # VPN GW
-    fw.cmd('ip addr add 10.0.4.1/24 dev fw-eth4') # ADMIN GW
-    
-    # Activation des interfaces
+    info('*** Configuration des IPs sur le Cluster FW\n')
     for i in range(5):
-        fw.cmd(f'ip link set fw-eth{i} up')
+        # Configuration FW1 (Actif par défaut - possède les IPs .1 et .11)
+        fw1.cmd(f'ip addr add 10.0.{i}.1/24 dev fw1-eth{i}') # IP Virtuelle (VIP)
+        fw1.cmd(f'ip addr add 10.0.{i}.11/24 dev fw1-eth{i}') # IP Réelle
+        fw1.cmd(f'ip link set fw1-eth{i} up')
 
-    #--- ACTIVATION ROUTAGE SERVEUR VPN ---
+        # Configuration FW2 (Passif par défaut - possède uniquement .12)
+        fw2.cmd(f'ip addr add 10.0.{i}.12/24 dev fw2-eth{i}') # IP Réelle
+        fw2.cmd(f'ip link set fw2-eth{i} up')
+
+    info('*** Configuration du Routage spécifique (VPN & Inter-zones)\n')
+    # Le serveur VPN doit pouvoir router le trafic
     h_vpn.cmd('sysctl -w net.ipv4.ip_forward=1')
 
-    # Désactivation IPv6 (Optionnel mais propre)
+    # Les deux pare-feux doivent savoir que le réseau VPN est derrière h_vpn (10.0.3.2)
+    fw1.cmd('ip route add 10.8.0.0/24 via 10.0.3.2')
+    fw2.cmd('ip route add 10.8.0.0/24 via 10.0.3.2')
+
+    # Désactivation IPv6
     for host in net.hosts:
         host.cmd("sysctl -w net.ipv6.conf.all.disable_ipv6=1")
 
-    info('*** TEST: Ping du LAN vers le FW ***\n')
+    info('\n*** SYNTHÈSE DES PASSERELLES (VIP) ***\n')
+    info('Gateway Virtuelle: 10.0.x.1\n')
+    info('Pare-feu Primaire (fw1): 10.0.x.11 (Actif)\n')
+    info('Pare-feu Secondaire (fw2): 10.0.x.12 (Backup)\n')
+
+    info('\n*** TEST INITIAL: Ping Gateway depuis LAN ***\n')
     print(h_lan.cmd('ping -c 2 10.0.2.1'))
 
     info('*** Lancement de la console Mininet ***\n')
