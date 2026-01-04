@@ -58,15 +58,15 @@ def setup_network():
     net.build()
     net.start()
 
-    info('*** Configuration des IPs sur le Cluster FW\n')
+    info('*** Configuration des IPs RÉELLES sur le Cluster FW\n')
     for i in range(5):
-        # Configuration FW1 (Actif par défaut - possède les IPs .1 et .11)
-        fw1.cmd(f'ip addr add 10.0.{i}.1/24 dev fw1-eth{i}') # IP Virtuelle (VIP)
-        fw1.cmd(f'ip addr add 10.0.{i}.11/24 dev fw1-eth{i}') # IP Réelle
+        # Configuration FW1 : avec IP réelle .11
+        # (On retire la ligne avec 10.0.{i}.1)
+        fw1.cmd(f'ip addr add 10.0.{i}.11/24 dev fw1-eth{i}') 
         fw1.cmd(f'ip link set fw1-eth{i} up')
 
-        # Configuration FW2 (Passif par défaut - possède uniquement .12)
-        fw2.cmd(f'ip addr add 10.0.{i}.12/24 dev fw2-eth{i}') # IP Réelle
+        # Configuration FW2 : UNIQUEMENT son IP réelle .12
+        fw2.cmd(f'ip addr add 10.0.{i}.12/24 dev fw2-eth{i}') 
         fw2.cmd(f'ip link set fw2-eth{i} up')
 
     info('*** Configuration du Routage spécifique (VPN & Inter-zones)\n')
