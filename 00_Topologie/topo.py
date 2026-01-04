@@ -69,6 +69,13 @@ def setup_network():
         fw2.cmd(f'ip addr add 10.0.{i}.12/24 dev fw2-eth{i}') 
         fw2.cmd(f'ip link set fw2-eth{i} up')
 
+        # --- Add VIPs for HA ---
+    fw1.cmd('ifconfig fw1-eth0:0 10.0.0.1/24 up')   # WAN VIP
+    fw1.cmd('ifconfig fw1-eth1:0 10.0.1.1/24 up')   # DMZ VIP
+    fw1.cmd('ifconfig fw1-eth2:0 10.0.2.1/24 up')   # LAN VIP
+    fw1.cmd('ifconfig fw1-eth3:0 10.0.3.1/24 up')   # VPN VIP
+    fw1.cmd('ifconfig fw1-eth4:0 10.0.4.1/24 up')   # Admin VIP 
+
     info('*** Configuration du Routage spécifique (VPN & Inter-zones)\n')
     # Le serveur VPN doit pouvoir router le trafic
     h_vpn.cmd('sysctl -w net.ipv4.ip_forward=1')
