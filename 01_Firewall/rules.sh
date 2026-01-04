@@ -1,13 +1,14 @@
 j A#!/bin/bash
 
+PREFIX=$(hostname)
 # ==========================================
 # CONFIGURATION DES VARIABLES (Pour la lisibilité)
 # ==========================================
-WAN_IF="fw-eth0"    # Vers Internet (10.0.0.0/24)
-DMZ_IF="fw-eth1"    # Vers Serveurs (10.0.1.0/24)
-LAN_IF="fw-eth2"    # Vers Interne (10.0.2.0/24)
-VPN_IF="fw-eth3"    # Vers Clients VPN (10.0.3.0/24)
-ADM_IF="fw-eth4"    # Vers Admin (10.0.4.0/24)
+WAN_IF="${PREFIX}-eth0"    # Vers Internet (10.0.0.0/24)
+DMZ_IF="${PREFIX}-eth1"    # Vers Serveurs (10.0.1.0/24)
+LAN_IF="${PREFIX}-eth2"    # Vers Interne (10.0.2.0/24)
+VPN_IF="${PREFIX}-eth3"    # Vers Clients VPN (10.0.3.0/24)
+ADM_IF="${PREFIX}-eth4"    # Vers Admin (10.0.4.0/24)
 
 # ==========================================
 # 1. INITIALISATION (Reset complet)
@@ -116,4 +117,4 @@ echo "[*] Activation des logs..."
 iptables -A INPUT -j LOG --log-prefix "FW-DROP-INPUT: " --log-level 4
 iptables -A FORWARD -j LOG --log-prefix "FW-DROP-FORWARD: " --log-level 4
 
-echo "[OK] Pare-feu configuré avec succès."
+echo "[OK] Pare-feu configuré avec succès sur ${PREFIX}."
