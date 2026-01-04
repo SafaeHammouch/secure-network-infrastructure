@@ -40,6 +40,9 @@ iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A INPUT -p icmp -j ACCEPT
 iptables -A FORWARD -i $LAN_IF -o $WAN_IF -p icmp -j ACCEPT
 iptables -A FORWARD -i $ADM_IF -p icmp -j ACCEPT
+iptables -A FORWARD -i fw1-eth0 -o fw1-eth2 -p icmp -j ACCEPT
+iptables -A FORWARD -i fw1-eth2 -o fw1-eth0 -p icmp -j ACCEPT
+
 
 # 6. Règles DMZ
 iptables -A FORWARD -i $WAN_IF -o $DMZ_IF -p tcp --dport 80 -j ACCEPT

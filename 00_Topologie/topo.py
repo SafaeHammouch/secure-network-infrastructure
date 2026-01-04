@@ -75,6 +75,10 @@ def setup_network():
     fw1.cmd('ifconfig fw1-eth2:0 10.0.2.1/24 up')   # LAN VIP
     fw1.cmd('ifconfig fw1-eth3:0 10.0.3.1/24 up')   # VPN VIP
     fw1.cmd('ifconfig fw1-eth4:0 10.0.4.1/24 up')   # Admin VIP 
+        # After fw1 runs rules.sh
+    fw1.cmd('iptables -A FORWARD -i fw1-eth0 -o fw1-eth2 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT')
+    fw1.cmd('iptables -A FORWARD -i fw1-eth2 -o fw1-eth0 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT')
+
 
     info('*** Configuration du Routage spécifique (VPN & Inter-zones)\n')
     # Le serveur VPN doit pouvoir router le trafic
