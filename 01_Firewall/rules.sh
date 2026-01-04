@@ -11,7 +11,7 @@ fi
 PREFIX=${DETECTED_IF%-eth0}
 # --------------------------------
 
-echo "Detected Prefix: $PREFIX"WAN_IF="${PREFIX}-eth0"
+echo "Detected Prefix: $PREFIX"
 WAN_IF="${PREFIX}-eth0"
 DMZ_IF="${PREFIX}-eth1"
 LAN_IF="${PREFIX}-eth2"
