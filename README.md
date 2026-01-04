@@ -198,60 +198,73 @@ sudo apt-get install -y snort
 > *   Expected alerts: "ALERTE: Scan Nmap/Ping detecte", "ALERTE: Brute-force SSH detecte", "ALERTE: Tentative SQL Injection"
 
 ### Phase 6: Enable High Availability (Heartbeat)
-Implements Active/Passive cluster with virtual IP failover for DMZ services using Keepalived (VRRP).
+Implements Active/Passive firewall cluster with virtual IP failover using Keepalived (VRRP).
 
 **Prerequisites:**
 ```bash
 sudo apt-get install -y keepalived
 ```
 
-**Note:** This requires a second DMZ host (`h_dmz2`).
+**Note:** This requires two firewalls (`fw1` and `fw2`) in the topology.
 
-1. **Start Master Node:**
+1. **Start Master Firewall (fw1):**
     ```bash
-    mininet> h_dmz bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh master &
+    mininet> fw1 bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh master &
     ```
     *Expected output:*
     ```
     [HA] Démarrage en mode MASTER
     [OK] Keepalived démarré
-    [INFO] VIP: 10.0.1.100
+    [INFO] VIP: 10.0.0.1, 10.0.1.1, 10.0.2.1, 10.0.3.1, 10.0.4.1
     ```
 
-2. **Start Backup Node:**
+2. **Start Backup Firewall (fw2):**
     ```bash
-    mininet> h_dmz2 bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh backup &
+    mininet> fw2 bash /home/zakariae-azn/secure-network-infrastructure/06_HA_Heartbeat/start_keepalived.sh backup &
     ```
     *Expected output:*
     ```
     [HA] Démarrage en mode BACKUP
     [OK] Keepalived démarré
-    [INFO] VIP: 10.0.1.100
+    [INFO] VIP: 10.0.0.1, 10.0.1.1, 10.0.2.1, 10.0.3.1, 10.0.4.1
     ```
 
-3. **Test Virtual IP (VIP):**
+3. **Test Virtual IPs (VIP):**
     ```bash
-    mininet> h_wan ping -c 3 10.0.1.100
+    # Test gateway connectivity
+    mininet> h_wan ping -c 3 10.0.0.1
+    mininet> h_dmz ping -c 3 10.0.1.1
+    mininet> h_lan ping -c 3 10.0.2.1
     ```
-    *Expected: 0% packet loss - VIP responds*
+    *Expected: 0% packet loss - VIPs respond via fw1*
 
 4. **Simulate Failover (T9.2):**
     ```bash
-    # Stop master node
-    mininet> h_dmz pkill -f keepalived
+    # Stop master firewall
+    mininet> fw1 pkill -f keepalived
     ```
-    *Expected: Backup detects failure and takes over VIP within 2-3 seconds*
+    *Expected: fw2 detects failure and takes over all VIPs within 1-2 seconds*
     
     ```bash
-    # Verify VIP still responds
-    mininet> h_wan ping -c 3 10.0.1.100
+    # Verify VIPs still respond
+    mininet> h_wan ping -c 3 10.0.0.1
+    mininet> h_lan ping -c 3 10.0.2.1
     ```
-    *Expected: Minimal packet loss during failover, then 0% loss*
+    *Expected: Minimal packet loss during failover (1-2 packets), then 0% loss*
+
+5. **Verify failover:**
+    ```bash
+    # Check which firewall has the VIPs
+    mininet> fw2 ip addr show | grep "10.0"
+    ```
+    *Expected: All VIPs (10.0.0.1, 10.0.1.1, etc.) now on fw2*
 
 > **Verification (T9.x):**
-> *   T9.1: Master node responds to VIP initially
-> *   T9.2: Automatic failover when master fails
-> *   T9.3: Service continuity maintained (brief interruption < 3s)
+> *   T9.1: Master firewall (fw1) responds to all VIPs initially
+> *   T9.2: Automatic failover when fw1 fails
+> *   T9.3: Service continuity maintained (brief interruption < 2s)
+> *   All zones remain accessible through VIPs after failover
+
 ---
 
 ## 📂 Project Structure
