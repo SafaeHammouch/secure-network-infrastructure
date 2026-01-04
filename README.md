@@ -267,34 +267,100 @@ sudo apt-get install -y keepalived
 
 ---
 
+### Phase 7: Automated Global Validation
+
+Executes a comprehensive audit script to validate network isolation, firewall logs, scan resistance, and service availability.
+
+**Prerequisites:**
+
+Ensure the script is executable (run this in your normal terminal, not Mininet):
+
+```bash
+chmod +x ~/secure-network-infrastructure/07_Validation/validate_all.sh
+```
+
+**Execution:**
+
+From an admin node inside Mininet:
+
+```bash
+mininet> h_admin /home/zakariae-azn/secure-network-infrastructure/07_Validation/validate_all.sh
+```
+
+**Expected Output:**
+* Checks open ports (Nmap) to verify Scan Resistance
+* Verifies Firewall & IDS logs
+* Tests HTTP/HTTPS connectivity
+* Result: Generates a colored status report (PASS/FAIL) and a JSON file in `/tmp/`
+
+---
+
 ## 📂 Project Structure
 
-```text
+```
 secure-network-infrastructure/
 ├── 00_Topologie/
-│   └── topo.py            # Mininet Python script (Network Definition)
+│   └── topo.py                      # Mininet Python script (Network Definition)
 ├── 01_Firewall/
-│   └── rules.sh           # iptables script (Zero Trust Logic)
+│   └── rules.sh                     # iptables script (Zero Trust Logic)
 ├── 02_Services_DMZ/
-│   ├── install_web.sh     # Launcher for Web Server
-│   ├── secure_server.py   # Python HTTPS Server with Redirection logic
-│   └── generate_ssl.sh    # Script to generate X.509 Certificates
+│   ├── install_web.sh               # Launcher for Web Server
+│   ├── secure_server.py             # Python HTTPS Server with Redirection logic
+│   └── generate_ssl.sh              # Script to generate X.509 Certificates
 ├── 03_VPN/
-│   ├── setup_vpn.sh       # Script to install OpenVPN & generate keys
+│   ├── setup_vpn.sh                 # Script to install OpenVPN & generate keys
 │   └── (Generated configs: server.conf, client.conf, static.key)
 ├── 04_Admin_SSH/
-│   ├── setup_ssh.sh       # SSH hardening script (key-only auth)
-│   ├── id_rsa             # Private key (generated)
-│   └── id_rsa.pub         # Public key (generated)
-├── 05_IDS_Snort/
-│   ├── start_snort.sh            # Snort launcher script
-│   ├── snort.conf                # Minimal Snort configuration
-│   ├── local.rules               # Custom detection rules
+│   ├── setup_ssh.sh                 # SSH hardening script (key-only auth)
+│   ├── id_rsa                       # Private key (generated)
+│   └── id_rsa.pub                   # Public key (generated)
+├── 05_IDS_Suricata/
+│   ├── start_suricata.sh            # Suricata launcher script
+│   ├── suricata.yaml                # Minimal Suricata configuration
+│   ├── local.rules                  # Custom detection rules
 │   └── ids_firewall_correlation.sh  # IDS/Firewall correlation
 ├── 06_HA_Heartbeat/
-│   └── ha_manager.py      # Active/Passive cluster manager
-└── README.md              # Documentation
+│   ├── start_keepalived.sh          # Cluster startup script
+│   ├── keepalived_master.conf       # VRRP Master config
+│   └── keepalived_backup.conf       # VRRP Backup config
+├── 07_Validation/
+│   └── validate_all.sh              # Automated Audit & Reporting Script
+└── README.md                        # Documentation
 ```
+
+---
+
+## 🔒 Security Features
+
+### Zero Trust Principles
+* **Default Deny:** All traffic blocked by default
+* **Least Privilege:** Only necessary flows are permitted
+* **Network Segmentation:** 5 isolated security zones
+* **Encrypted Communications:** HTTPS, VPN, SSH
+
+### Defense in Depth
+* **Perimeter Security:** Zone-based firewall with iptables
+* **Application Security:** HTTPS with automatic HTTP redirection
+* **Access Control:** Key-based SSH authentication only
+* **Intrusion Detection:** Real-time monitoring with Suricata
+* **High Availability:** VRRP-based failover for continuity
+
+---
+
+## 🧪 Testing & Validation
+
+The project includes comprehensive testing scenarios:
+
+1. **Network Isolation Tests:** Verify zone separation
+2. **Firewall Policy Tests:** Confirm rule enforcement
+3. **Service Security Tests:** Validate HTTPS redirection
+4. **VPN Connectivity Tests:** Check encrypted tunnel
+5. **SSH Access Tests:** Verify authentication mechanisms
+6. **IDS Detection Tests:** Confirm alert generation
+7. **HA Failover Tests:** Test automatic switchover
+8. **Automated Audits:** Complete system validation
+
+---
 
 ## 📝 Authors
 *   **Safae Hammouch**
